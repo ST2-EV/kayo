@@ -169,7 +169,7 @@ with ui.row():
     mobile_number = ui.input(
         label="Mobile Number",
         placeholder="+1xxxxxxxxxx",
-        validation={"Input too long": lambda value: len(value) < 12},
+        validation={"Input too long": lambda value: len(value) < 13},
     )
     ui.space()
     password = ui.input(
@@ -185,8 +185,7 @@ with ui.row():
 
 
 def alert_user(item):
-    # send_message(f"Somebody stole your {item}", NIKO)
-    print(f"Somebody stole your {item}")
+    send_message(f"Somebody stole your {item}", mobile_number_value)
 
 
 @app.get("/video/sentry")
