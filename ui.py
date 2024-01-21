@@ -14,6 +14,7 @@ from ultralytics import YOLO
 from message import send_message
 
 NIKO = "+17788141068"
+BOUNDARY_BUFFER = 150
 
 model = YOLO("yolov8n.pt")
 
@@ -109,7 +110,11 @@ ui.dark_mode().enable()
 video_capture = cv2.VideoCapture(0)
 frame_cnt = 0
 scanned_objects = []
-sus_list = {}
+sus_bucket = {}
+mobile_number_value = ""
+password_value = ""
+
+del_sus_bucket = []
 
 
 def convert(frame: np.ndarray) -> bytes:
@@ -151,17 +156,8 @@ async def grab_video_frame_2() -> Response:
 
 
 label = ui.label("YSG")
-spinner = ui.spinner(size="xl").classes(
-    "flex justify-center items-center"
-)  # absolute-center
+spinner = ui.spinner(size="xl").classes("absolute-center")  # absolute-center
 spinner.set_visibility(True)
-
-ui.input(
-    label="Mobile Number",
-    placeholder="+1",
-    on_change=lambda e: result.set_text("you typed: " + e.value),
-    validation={"Input too long": lambda value: len(value) < 20},
-)
 
 video_image_1 = ui.interactive_image().classes("w-full h-full")
 ui_timer_1 = ui.timer(
@@ -169,10 +165,23 @@ ui_timer_1 = ui.timer(
     callback=lambda: (video_image_1.set_source(f"/video/home?{time.time()}"),),
 )
 
-scan_button = ui.button(
-    "Scan(10s) and keep and eye",
-    on_click=lambda: scan_button_clicked(scan_button, video_image_1, ui_timer_1),
-)
+with ui.row():
+    mobile_number = ui.input(
+        label="Mobile Number",
+        placeholder="+1xxxxxxxxxx",
+        validation={"Input too long": lambda value: len(value) < 12},
+    )
+    ui.space()
+    password = ui.input(
+        label="Password",
+        placeholder="4 digit number",
+        validation={"Input too long": lambda value: len(value) < 5},
+    )
+    ui.space()
+    scan_button = ui.button(
+        "Scan(10s) and keep and eye",
+        on_click=lambda: scan_button_clicked(scan_button, video_image_1, ui_timer_1),
+    )
 
 
 def alert_user(item):
@@ -182,50 +191,120 @@ def alert_user(item):
 
 @app.get("/video/sentry")
 async def sentry():
-    print("WUBBALUBBADUBDUB")
-    global video_capture, sus_list, scanned_processed_objects
+    global video_capture, sus_bucket, scanned_processed_objects, del_sus_bucket
     while video_capture.isOpened():
         success, frame = await run.io_bound(video_capture.read)
         if success:
             results = model(frame, classes=interested_classes, verbose=False)
             objs_in_frame = json.loads(results[0].tojson())
-            objects_in_frame = set([obj["name"] for obj in objs_in_frame])
-            scanned_objs_string = set(scanned_processed_objects.keys())
-            sub = scanned_objs_string - objects_in_frame
+
+            good_list = []
+            for scanned_key, scanned in scanned_processed_objects.items():
+                for obj in objs_in_frame:
+                    if (
+                        (
+                            abs(scanned["box"]["x1"] - obj["box"]["x1"])
+                            <= BOUNDARY_BUFFER
+                        )
+                        and (
+                            abs(scanned["box"]["x2"] - obj["box"]["x2"])
+                            <= BOUNDARY_BUFFER
+                        )
+                        and (
+                            abs(scanned["box"]["y1"] - obj["box"]["y1"])
+                            <= BOUNDARY_BUFFER
+                        )
+                        and (
+                            abs(scanned["box"]["y2"] - obj["box"]["y2"])
+                            <= BOUNDARY_BUFFER
+                        )
+                    ):
+                        good_list.append(scanned_key)
+
+            sub = set(scanned_processed_objects.keys()) - set(good_list)
             if sub:
                 for item in sub:
-                    if item not in sus_list:
-                        sus_list[item] = 1
-                    else:
-                        sus_list[item] += 1
+                    if item not in del_sus_bucket:
+                        if item not in sus_bucket:
+                            sus_bucket[item] = 1
+                        else:
+                            sus_bucket[item] += 1
 
+            # if sub:
+            #     for item in sub:
+            #         if item not in sus_bucket:
+            #             sus_bucket[item] = 1
+            #         else:
+            #             sus_bucket[item] += 1
+            # del_sus_bucket = []
             for obj in objs_in_frame:
-                if obj["name"] in sus_list:
-                    sus_list[obj["name"]] -= 1
-                    if sus_list[obj["name"]] <= 0:
-                        del sus_list[obj["name"]]
+                for sus_key, sus_value in sus_bucket.items():
+                    if sus_key not in del_sus_bucket:
+                        if (
+                            (
+                                abs(
+                                    scanned_processed_objects[sus_key]["box"]["x1"]
+                                    - obj["box"]["x1"]
+                                )
+                                <= BOUNDARY_BUFFER
+                            )
+                            and (
+                                abs(
+                                    scanned_processed_objects[sus_key]["box"]["x2"]
+                                    - obj["box"]["x2"]
+                                )
+                                <= BOUNDARY_BUFFER
+                            )
+                            and (
+                                abs(
+                                    scanned_processed_objects[sus_key]["box"]["y1"]
+                                    - obj["box"]["y1"]
+                                )
+                                <= BOUNDARY_BUFFER
+                            )
+                            and (
+                                abs(
+                                    scanned_processed_objects[sus_key]["box"]["y2"]
+                                    - obj["box"]["y2"]
+                                )
+                                <= BOUNDARY_BUFFER
+                            )
+                        ):
+                            sus_bucket[sus_key] -= 2
+                            pprint(sus_bucket)
+                            if sus_bucket[sus_key] <= 0:
+                                sus_bucket[sus_key] = 0
+                                if sus_key not in del_sus_bucket:
+                                    del_sus_bucket.append(sus_key)
+                        else:
+                            sus_bucket[sus_key] += 1
 
-            if sus_list:
-                print(sus_list)
-                del_sus_list = []
-                for item in sus_list:
-                    if sus_list[item] >= 25:
-                        alert_user(item)
-                        del_sus_list.append(item)
-                        del scanned_processed_objects[item]
+            del_sus_bucket = []
+            for sus_key, sus_value in sus_bucket.items():
+                if sus_value >= 25:
+                    print(sus_key, "is stolen")
+                    alert_user(scanned_processed_objects[sus_key]["name"])
+                    del scanned_processed_objects[sus_key]
+                    # sus_bucket[sus_key] = 0
+                    del_sus_bucket.append(sus_key)
 
-                for item in del_sus_list:
-                    del sus_list[item]
+            for key in del_sus_bucket:
+                if key in sus_bucket:
+                    del sus_bucket[key]
 
         jpeg = await run.cpu_bound(convert, frame)
         return Response(content=jpeg, media_type="image/jpeg")
 
 
 def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
-    global frame_cnt, scanned_objects
+    global frame_cnt, scanned_objects, mobile_number_value, password_value
     scan_button.delete()
     video_image_1.delete()
     ui_timer_1.delete()
+    mobile_number_value = mobile_number.value
+    mobile_number.delete()
+    password_value = password.value
+    password.delete()
     spinner.set_visibility(False)
     spinner.delete()
 
@@ -237,31 +316,95 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
         callback=lambda: video_image_2.set_source(f"/video/scan?{time.time()}"),
     )
 
+    # Checks based on boundary
+    def check_if_different_item(obj):
+        global scanned_processed_objects, BOUNDARY_BUFFER
+        for scanned_obj in scanned_processed_objects.values():
+            # print(scanned_obj)
+            if scanned_obj["name"] == obj["name"]:
+                if (
+                    (
+                        abs(scanned_obj["box"]["x1"] - obj["box"]["x1"])
+                        <= BOUNDARY_BUFFER
+                    )
+                    and (
+                        abs(scanned_obj["box"]["x2"] - obj["box"]["x2"])
+                        <= BOUNDARY_BUFFER
+                    )
+                    and (
+                        abs(scanned_obj["box"]["y1"] - obj["box"]["y1"])
+                        <= BOUNDARY_BUFFER
+                    )
+                    and (
+                        abs(scanned_obj["box"]["y2"] - obj["box"]["y2"])
+                        <= BOUNDARY_BUFFER
+                    )
+                ):
+                    return False
+
+        return True
+
     def post_scan(video_image_2, ui_timer_2):
         global scanned_processed_objects
         video_image_2.delete()
         ui_timer_2.delete()
 
+        # for r in scanned_objects:
+        #     r_dict = json.loads(r)
+        #     for obj in r_dict:
+        #         if obj["name"] not in scanned_processed_objects:
+        #             scanned_processed_objects[obj["name"]] = obj
+
         for r in scanned_objects:
             r_dict = json.loads(r)
             for obj in r_dict:
-                if obj["name"] not in scanned_processed_objects:
-                    scanned_processed_objects[obj["name"]] = obj
+                if check_if_different_item(obj) or len(scanned_processed_objects) == 0:
+                    scanned_processed_objects[
+                        f"{obj['name']}_{obj['box']['x1']}_{obj['box']['x2']}_{obj['box']['y1']}_{obj['box']['y2']}"
+                    ] = obj
+
+        for key, i in scanned_processed_objects.items():
+            print(key, i["box"]["x1"], i["box"]["y1"])
+        print("==")
+        for key, i in sus_bucket.items():
+            print(key, i)
 
         if len(scanned_processed_objects) > 0:
-            ui.label("Beware")
+            beware_label = ui.label("Beware")
             video_image_3 = ui.interactive_image().classes("w-full h-full")
             video_image_3.set_source(f"static/eye.gif")
-            ui.label("This Area is Monitored")
+            area_monitored_label = ui.label("This Area is Monitored")
 
             video_image_4 = ui.interactive_image().classes("w-full h-full")
-            ui.timer(
+            timer_4 = ui.timer(
                 interval=0.1,
                 callback=lambda: video_image_4.set_source(
                     f"/video/sentry?{time.time()}"
                 ),
             )
             video_image_4.set_visibility(False)
+
+            def disarm(val, password_check, pass_button):
+                if val == password_value:
+                    video_image_4.delete()
+                    timer_4.delete()
+                    video_image_3.delete()
+                    beware_label.delete()
+                    area_monitored_label.delete()
+                    password_check.delete()
+                    pass_button.delete()
+                    ui.label("The eye has been disarmed.")
+
+            password_check = ui.input(
+                label="Password",
+                validation={"Input too long": lambda value: len(value) < 5},
+            )
+            pass_button = ui.button(
+                "Disarm",
+                on_click=lambda: disarm(
+                    password_check.value, password_check, pass_button
+                ),
+            )
         else:
             ui.label("No belongings were detected in the space")
 
