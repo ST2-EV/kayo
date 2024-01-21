@@ -102,7 +102,15 @@ class_to_label = {
 }
 label_to_class = {v: k for k, v in class_to_label.items()}
 
-interested_classes_labels = ["bottle", "cell phone"]
+interested_classes_labels = [
+    "bottle",
+    "cell phone",
+    "backpack",
+    "mouse",
+    "keyboard",
+    "book",
+    "pizza",
+]
 interested_classes = [label_to_class[label] for label in interested_classes_labels]
 print(interested_classes)
 scanned_processed_objects = {}
@@ -191,6 +199,10 @@ def alert_user(item):
 @app.get("/video/sentry")
 async def sentry():
     global video_capture, sus_bucket, scanned_processed_objects, del_sus_bucket
+    try:
+        requests.get("http://127.0.0.1:8000/heartbeat/")
+    except:
+        pass
     while video_capture.isOpened():
         success, frame = await run.io_bound(video_capture.read)
         if success:
@@ -348,6 +360,11 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
         video_image_2.delete()
         ui_timer_2.delete()
 
+        try:
+            requests.get("http://127.0.0.1:8000/initiate/")
+        except:
+            pass
+
         # for r in scanned_objects:
         #     r_dict = json.loads(r)
         #     for obj in r_dict:
@@ -392,6 +409,10 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
                     area_monitored_label.delete()
                     password_check.delete()
                     pass_button.delete()
+                    try:
+                        requests.get("http://127.0.0.1:8000/finalize/")
+                    except:
+                        pass
                     ui.label("The eye has been disarmed.")
 
             password_check = ui.input(
