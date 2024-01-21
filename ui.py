@@ -296,7 +296,7 @@ async def sentry():
                             )
                         ):
                             sus_bucket[sus_key] -= 2
-                            pprint(sus_bucket)
+                            # pprint(sus_bucket)
                             if sus_bucket[sus_key] <= 0:
                                 sus_bucket[sus_key] = 0
                                 if sus_key not in del_sus_bucket:
@@ -396,6 +396,9 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
                     scanned_processed_objects[
                         f"{obj['name']}_{obj['box']['x1']}_{obj['box']['x2']}_{obj['box']['y1']}_{obj['box']['y2']}"
                     ] = obj
+                    scanned_processed_objects_cnt[
+                        f"{obj['name']}_{obj['box']['x1']}_{obj['box']['x2']}_{obj['box']['y1']}_{obj['box']['y2']}"
+                    ] = 1
                 else:
                     if kikey not in scanned_processed_objects_cnt:
                         scanned_processed_objects_cnt[kikey] = 1
@@ -410,7 +413,8 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
 
         for key, i in scanned_processed_objects_cnt.items():
             if i <= 25:
-                del scanned_processed_objects[key]
+                if key in scanned_processed_objects:
+                    del scanned_processed_objects[key]
 
         pprint(scanned_processed_objects)
         pprint(scanned_processed_objects_cnt)

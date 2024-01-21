@@ -9,7 +9,7 @@ client = Client(account_sid, auth_token)
 
 def send_message(message, to):
     message = client.messages.create(
-        body=f"Your Desk: {message}",
+        body=f"KAY/O: {message}",
         from_="+16592243401",
         to=to,
     )
