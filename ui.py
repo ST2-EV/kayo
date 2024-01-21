@@ -1,4 +1,3 @@
-import asyncio
 import json
 import signal
 import time
@@ -115,6 +114,13 @@ interested_classes = [label_to_class[label] for label in interested_classes_labe
 print(interested_classes)
 scanned_processed_objects = {}
 ui.dark_mode().enable()
+ui.add_head_html(
+    """
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat&display=swap');
+</style>
+"""
+)
 video_capture = cv2.VideoCapture(0)
 frame_cnt = 0
 scanned_objects = []
@@ -163,7 +169,11 @@ async def grab_video_frame_2() -> Response:
             raise RuntimeError("Could not read frame from video capture device.")
 
 
-label = ui.label("YSG")
+label = (
+    ui.label("KAY/O")
+    .classes("text-4xl font-bold text-center")
+    .style("margin:0 auto;font-family: 'Montserrat', sans-serif;")
+)
 spinner = ui.spinner(size="xl").classes("absolute-center")  # absolute-center
 spinner.set_visibility(True)
 
@@ -173,22 +183,26 @@ ui_timer_1 = ui.timer(
     callback=lambda: (video_image_1.set_source(f"/video/home?{time.time()}"),),
 )
 
-with ui.row():
+with ui.row().classes("w-9/12").style(
+    "margin:0 auto;align-items: center;font-family: 'Montserrat', sans-serif;"
+):
     mobile_number = ui.input(
         label="Mobile Number",
         placeholder="+1xxxxxxxxxx",
         validation={"Input too long": lambda value: len(value) < 13},
     )
-    ui.space()
+    space_1 = ui.space()
     password = ui.input(
         label="Password",
         placeholder="4 digit number",
         validation={"Input too long": lambda value: len(value) < 5},
     )
-    ui.space()
+    space_2 = ui.space()
     scan_button = ui.button(
-        "Scan(10s) and keep and eye",
+        "Scan(3s) and KAY/O",
         on_click=lambda: scan_button_clicked(scan_button, video_image_1, ui_timer_1),
+    ).style(
+        "background-color: #cccccc !important;color: black !important;font-weight: bold !important;"
     )
 
 
@@ -359,6 +373,8 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
         global scanned_processed_objects
         video_image_2.delete()
         ui_timer_2.delete()
+        space_1.delete()
+        space_2.delete()
 
         try:
             requests.get("http://127.0.0.1:8000/initiate/")
@@ -386,10 +402,37 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
             print(key, i)
 
         if len(scanned_processed_objects) > 0:
-            beware_label = ui.label("Beware")
-            video_image_3 = ui.interactive_image().classes("w-full h-full")
-            video_image_3.set_source(f"static/eye.gif")
-            area_monitored_label = ui.label("This Area is Monitored")
+            with ui.column().classes("w-full").style(
+                "margin:0 auto;font-family: 'Montserrat', sans-serif;"
+            ):
+                beware_label = (
+                    ui.label("Beware")
+                    .classes("text-4xl font-bold text-center")
+                    .style("margin:0 auto;font-family: 'Montserrat', sans-serif;")
+                )
+                video_image_3 = ui.interactive_image().classes("w-full h-full")
+                video_image_3.set_source(f"static/eye.gif")
+                area_monitored_label = (
+                    ui.label("This Area is Monitored")
+                    .classes("text-4xl font-bold text-center")
+                    .style("margin:0 auto;font-family: 'Montserrat', sans-serif;")
+                )
+                password_check = ui.input(
+                    label="Password",
+                    validation={"Input too long": lambda value: len(value) < 5},
+                ).style("margin:0 auto;")
+                pass_button = (
+                    ui.button(
+                        "Disarm",
+                        on_click=lambda: disarm(
+                            password_check.value, password_check, pass_button
+                        ),
+                    )
+                    .style("margin:0 auto;")
+                    .style(
+                        "background-color: #cccccc !important;color: black !important;"
+                    )
+                )
 
             video_image_4 = ui.interactive_image().classes("w-full h-full")
             timer_4 = ui.timer(
@@ -413,20 +456,16 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
                         requests.get("http://127.0.0.1:8000/finalize/")
                     except:
                         pass
-                    ui.label("The eye has been disarmed.")
+                    ui.label("The eye has been disarmed.").classes(
+                        "text-3xl font-bold text-center"
+                    ).style("margin:0 auto;font-family: 'Montserrat', sans-serif;")
 
-            password_check = ui.input(
-                label="Password",
-                validation={"Input too long": lambda value: len(value) < 5},
-            )
-            pass_button = ui.button(
-                "Disarm",
-                on_click=lambda: disarm(
-                    password_check.value, password_check, pass_button
-                ),
-            )
         else:
-            ui.label("No belongings were detected in the space")
+            ui.label("No belongings were detected in the space").classes(
+                "text-3xl font-bold text-center"
+            ).classes("text-3xl font-bold text-center").style("margin:0 auto;").style(
+                "margin:0 auto;font-family: 'Montserrat', sans-serif;"
+            )
 
     ui.timer(
         interval=5,
