@@ -344,7 +344,7 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
     # Checks based on boundary
     def check_if_different_item(obj):
         global scanned_processed_objects, BOUNDARY_BUFFER
-        for scanned_obj in scanned_processed_objects.values():
+        for scanned_kikey, scanned_obj in scanned_processed_objects.items():
             # print(scanned_obj)
             if scanned_obj["name"] == obj["name"]:
                 if (
@@ -365,9 +365,9 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
                         <= BOUNDARY_BUFFER
                     )
                 ):
-                    return False
+                    return False, scanned_kikey
 
-        return True
+        return True, ""
 
     def post_scan(video_image_2, ui_timer_2):
         global scanned_processed_objects
@@ -387,19 +387,33 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
         #         if obj["name"] not in scanned_processed_objects:
         #             scanned_processed_objects[obj["name"]] = obj
 
+        scanned_processed_objects_cnt = {}
         for r in scanned_objects:
             r_dict = json.loads(r)
             for obj in r_dict:
-                if check_if_different_item(obj) or len(scanned_processed_objects) == 0:
+                check_diff, kikey = check_if_different_item(obj)
+                if check_diff or len(scanned_processed_objects) == 0:
                     scanned_processed_objects[
                         f"{obj['name']}_{obj['box']['x1']}_{obj['box']['x2']}_{obj['box']['y1']}_{obj['box']['y2']}"
                     ] = obj
+                else:
+                    if kikey not in scanned_processed_objects_cnt:
+                        scanned_processed_objects_cnt[kikey] = 1
+                    else:
+                        scanned_processed_objects_cnt[kikey] += 1
 
-        for key, i in scanned_processed_objects.items():
-            print(key, i["box"]["x1"], i["box"]["y1"])
-        print("==")
-        for key, i in sus_bucket.items():
-            print(key, i)
+        # for key, i in scanned_processed_objects.items():
+        #     print(key, i["box"]["x1"], i["box"]["y1"])
+        # print("==")
+        # for key, i in sus_bucket.items():
+        #     print(key, i)
+
+        for key, i in scanned_processed_objects_cnt.items():
+            if i <= 25:
+                del scanned_processed_objects[key]
+
+        pprint(scanned_processed_objects)
+        pprint(scanned_processed_objects_cnt)
 
         if len(scanned_processed_objects) > 0:
             with ui.column().classes("w-full").style(
