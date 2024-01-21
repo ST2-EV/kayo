@@ -2,3 +2,5 @@ vwnv/
 *.cfg
 *.weights
 *.pt
+.env
+__pycache__/

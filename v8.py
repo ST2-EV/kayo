@@ -3,6 +3,9 @@ import json
 import cv2
 from ultralytics import YOLO
 
+from message import send_message
+
+NIKO = "+17788141068"
 # Load the YOLOv8 model
 model = YOLO("yolov8n.pt")
 
@@ -133,14 +136,7 @@ def scan(n):
 
 
 def alert_user(item):
-    print(f"Somebody stole your {item}")
-
-
-def alert_sus_list(sus_list):
-    print(sus_list)
-    for item in sus_list:
-        if sus_list[item] >= 25:
-            alert_user(item)
+    send_message(f"Somebody stole your {item}", NIKO)
 
 
 def sentry(scanned_objects):
@@ -172,7 +168,16 @@ def sentry(scanned_objects):
                         del sus_list[obj["name"]]
 
             if sus_list:
-                alert_sus_list(sus_list)
+                print(sus_list)
+                del_sus_list = []
+                for item in sus_list:
+                    if sus_list[item] >= 25:
+                        alert_user(item)
+                        del_sus_list.append(item)
+                        del scanned_objects[item]
+
+                for item in del_sus_list:
+                    del sus_list[item]
 
             annotated_frame = results[0].plot()
 
