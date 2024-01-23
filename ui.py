@@ -417,7 +417,7 @@ def scan_button_clicked(scan_button, video_image_1, ui_timer_1):
                     del scanned_processed_objects[key]
 
         pprint(scanned_processed_objects)
-        pprint(scanned_processed_objects_cnt)
+        # pprint(scanned_processed_objects_cnt)
 
         if len(scanned_processed_objects) > 0:
             with ui.column().classes("w-full").style(
