@@ -8,12 +8,12 @@ TWILIO_ACCOUNT_SID=xxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=xxxxxxxxxxxxx
 ```
 
-create venv
+(optional but recommended) create venv
 
 
 install requirements
 ```
-pip install -r requirements.txt.
+pip install -r requirements.txt
 ```
 
 
